@@ -8,6 +8,17 @@ var fs = require('fs')
   , tp = {}
   ;
 
+['document'].forEach(function (name, ind, list) {
+  fs.readFile(__dirname + '/tmd-templates/'+name+'.jade', 'utf8', function(err, str){
+    if (err) throw Error('tmd-templates/'+name+'.jade could not be found');
+    try {
+      tp.article = jade.compile(str);
+    } catch (err) {
+      throw Error('error on compile tmd-templates/'+name+'.jade');
+    }
+  });
+});
+
 var router = function (app) {
   app.get('/', function (req, res, next) {
     req.url += 'index';
@@ -29,28 +40,23 @@ var router = function (app) {
   });
 };
 
-['document'].forEach(function (name, ind, list) {
-  fs.readFile(__dirname + '/tmd-templates/'+name+'.jade', 'utf8', function(err, str){
-    if (err) throw Error('tmd-templates/'+name+'.jade could not be found');
-    try {
-      tp.article = jade.compile(str);
-    } catch (err) {
-      throw Error('error on compile tmd-templates/'+name+'.jade');
-    }
-  });
-});
+//dir - leading with '/' and not tailing with '/', for example '/static'
+//as - what directory you want your file to be served as, for example if it was set to '/public', request of '/public/file' will get './static/file' as a result. set to '', request of '/file' will get './static/file'
+var staticMiddleware = function (dir, as) {
+  return function (req, res, next) {
+    var ind = req.url.indexOf(as)
+      , options = !ind ? {
+            root: __dirname + dir
+          , path: req.url.substring(as.length)
+        } : null
+      ;
+    if (!options) return next();
+    connectStatic.send(req, res, next, options);
+  };
+};
 
 connect(
     quip()
-  , function (req, res, next) {
-      var ind = req.url.indexOf('/tmd-static')
-        , options = !ind ? {
-              root: __dirname + '/tmd-static'
-            , path: req.url.substring(11)
-          } : null
-        ;
-      if (!options) return next();
-      connectStatic.send(req, res, next, options);
-    }
+  , staticMiddleware('/tmd-static', '/tmd-static')
   , connect.router(router)
 ).listen(3456);
