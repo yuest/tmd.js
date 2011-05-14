@@ -1,20 +1,22 @@
 require.paths.unshift('./node_modules/markdown/lib');
 var fs = require('fs')
+  , path = require('path')
   , markdown = require('markdown')
   , connect = require('connect')
   , connectStatic = connect['static']
   , quip = require('quip')
   , jade = require('jade')
   , tp = {}
+  , sourceDirectory = __dirname + '/tmd-source'
   ;
 
 ['document'].forEach(function (name, ind, list) {
   fs.readFile(__dirname + '/tmd-templates/'+name+'.jade', 'utf8', function(err, str){
-    if (err) throw Error('tmd-templates/'+name+'.jade could not be found');
+    if (err) throw 'tmd-templates/'+name+'.jade could not be found';
     try {
       tp.article = jade.compile(str);
     } catch (err) {
-      throw Error('error on compile tmd-templates/'+name+'.jade');
+      throw 'error on compile tmd-templates/'+name+'.jade';
     }
   });
 });
@@ -39,7 +41,7 @@ var router = function (app) {
     if ('.md' != Array.prototype.splice.call(filepath, -3).join('')) {
       filepath = filepath + '.md';
     }
-    filepath = __dirname + '/tmd-source/' + filepath;
+    filepath = sourceDirectory + '/' + filepath;
     renderJade(filepath, function (err, html) {
       if (err) res.notFound(err);
       res.ok().html(html);
@@ -68,11 +70,50 @@ connect(
   , connect.router(router)
 ).listen(3456);
 
-fs.readdir(__dirname + '/tmd-source', function (err, files) {
-  if (err) throw Error('error read dir /tmd-source');
-  files.forEach(function (file, ind, list) {
-    renderJade(__dirname + '/tmd-source/' + file, function (err, html) {
-      fs.writeFile(__dirname + '/tmd-output/' + file.substring(0, file.length - 3) + '.html', html);
+function handleFilesInDirectory(expr, dir, callback) {
+  if (arguments.length < 2) throw 'at least give me expr and a callback';
+  if (typeof dir == 'function') {
+    callback = dir;
+    dir = '.';
+  }
+  fs.readdir(dir, function (err, files) {
+    if (err) return callback(err);
+    files
+      .map(function (file) { return dir + '/' + file; })
+      .forEach(function (file) {
+        fs.stat(file, function (err, stat) {
+          if (err) return callback(err);
+          if (stat.isDirectory()) handleFilesInDirectory(expr, file, callback);
+          else if (stat.isFile() && file.substring(file.lastIndexOf('/')+1).match(expr))
+            callback(null, file);
+        });
+      });
+  });
+}
+
+function mkdir_p(dirname) {
+  if (dirname[0] != '/') throw 'dir name needs to start with "/"';
+  dirnames = dirname.split('/');
+  dirnames.shift();
+  if (dirnames[dirnames.length] === '') dirnames.pop();
+  if (dirnames.length == 0) throw 'invalid dirname';
+  var t = '', i, l;
+  for (i = 0, l = dirnames.length; i < l; ++i) {
+    t = t + '/' + dirnames[i];
+    if (path.existsSync(t)) {
+      if (fs.statSync(t).isDirectory()) continue;
+      else throw "'" + t + "' exists but it's not a directory";
+    }
+    fs.mkdirSync(t, '755');
+  }
+}
+mkdir_p('/home/yuest/a/b/c');
+handleFilesInDirectory(/.md$/, sourceDirectory, function (err, file) {
+  var outputFile = __dirname + '/tmd-output' + file.substring(sourceDirectory.length, file.length - 3) + '.html';
+  mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
+  renderJade(file, function (err, html) {
+    fs.writeFile(outputFile, html, function (err) {
+      if (err) console.log(err);
     });
   });
 });
