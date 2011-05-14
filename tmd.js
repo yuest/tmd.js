@@ -107,7 +107,6 @@ function mkdir_p(dirname) {
     fs.mkdirSync(t, '755');
   }
 }
-mkdir_p('/home/yuest/a/b/c');
 handleFilesInDirectory(/.md$/, sourceDirectory, function (err, file) {
   var outputFile = __dirname + '/tmd-output' + file.substring(sourceDirectory.length, file.length - 3) + '.html';
   mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
