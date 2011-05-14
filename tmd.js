@@ -19,6 +19,13 @@ var fs = require('fs')
   });
 });
 
+function renderJade(mdfilepath, fn) {
+  fs.readFile(mdfilepath, 'utf8', function (err, mdstr) {
+    if (err) return fn('not found');
+    fn(null, tp.article({content: markdown.makeHtml(mdstr)}));
+  });
+}
+
 var router = function (app) {
   app.get('/', function (req, res, next) {
     req.url += 'index';
@@ -32,10 +39,10 @@ var router = function (app) {
     if ('.md' != Array.prototype.splice.call(filepath, -3).join('')) {
       filepath = filepath + '.md';
     }
-    filepath = __dirname + '/' + filepath;
-    fs.readFile(filepath, 'utf8', function (err, mdstr) {
-      if (err) return res.notFound().html('not found');
-      res.ok().html(tp.article({content: markdown.makeHtml(mdstr)}));
+    filepath = __dirname + '/tmd-source/' + filepath;
+    renderJade(filepath, function (err, html) {
+      if (err) res.notFound(err);
+      res.ok().html(html);
     });
   });
 };
@@ -60,3 +67,12 @@ connect(
   , staticMiddleware('/tmd-static', '/tmd-static')
   , connect.router(router)
 ).listen(3456);
+
+fs.readdir(__dirname + '/tmd-source', function (err, files) {
+  if (err) throw Error('error read dir /tmd-source');
+  files.forEach(function (file, ind, list) {
+    renderJade(__dirname + '/tmd-source/' + file, function (err, html) {
+      fs.writeFile(__dirname + '/tmd-output/' + file.substring(0, file.length - 3) + '.html', html);
+    });
+  });
+});
