@@ -14,7 +14,7 @@ var fs = require('fs')
   fs.readFile(__dirname + '/tmd-templates/'+name+'.jade', 'utf8', function(err, str){
     if (err) throw 'tmd-templates/'+name+'.jade could not be found';
     try {
-      tp.article = jade.compile(str);
+      tp[name] = jade.compile(str);
     } catch (err) {
       throw 'error on compile tmd-templates/'+name+'.jade';
     }
@@ -24,12 +24,12 @@ var fs = require('fs')
 function renderJade(mdfilepath, fn) {
   fs.readFile(mdfilepath, 'utf8', function (err, mdstr) {
     if (err) return fn('not found');
-    fn(null, tp.article({content: markdown.makeHtml(mdstr)}));
+    fn(null, tp.document({content: markdown.makeHtml(mdstr)}));
   });
 }
 
 var router = function (app) {
-  app.get('/', function (req, res, next) {
+  app.get('*?/', function (req, res, next) {
     req.url += 'index';
     next();
   });
