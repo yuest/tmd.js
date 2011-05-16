@@ -71,11 +71,11 @@ connect(
 ).listen(3456);
 
 //dir - default to '.'
-//cond - boolean function return wether file should be handle
+//expr - RegExp
 //callback - how this file should be handle
-function fsfind(dir, cond, callback) {
+function fsfind(dir, expr, callback) {
   if (arguments.length < 2) throw 'at least give me a cond and a callback';
-  if (typeof dir == 'function') {
+  if (arguments.length == 2) {
     callback = cond;
     cond = dir;
     dir = '.';
@@ -87,14 +87,12 @@ function fsfind(dir, cond, callback) {
       .forEach(function (file) {
         fs.stat(file, function (err, stat) {
           if (err) return callback(err);
-          if (stat.isDirectory()) fsfind(file, cond, callback);
-          else if (stat.isFile() && cond(file)) callback(null, file);
+          if (stat.isDirectory()) fsfind(file, expr, callback);
+          else if (stat.isFile() && file.substring(file.lastIndexOf('/')+1).match(expr))
+            callback(null, file);
         });
       });
   });
-}
-function condMdFile(file) {
-  return file.substring(file.lastIndexOf('/')+1).match(/.md$/);
 }
 
 function mkdir_p(dirname) {
@@ -113,7 +111,7 @@ function mkdir_p(dirname) {
     fs.mkdirSync(t, '755');
   }
 }
-fsfind(sourceDirectory, condMdFile, function (err, file) {
+fsfind(sourceDirectory, /.md$/, function (err, file) {
   var outputFile = __dirname + '/tmd-output' + file.substring(sourceDirectory.length, file.length - 3) + '.html';
   mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
   renderJade(file, function (err, html) {
