@@ -10,7 +10,7 @@ var fs = require('fs')
   , sourceDirectory = __dirname + '/tmd-source'
   ;
 
-['document'].forEach(function (name, ind, list) {
+['document', 'listing'].forEach(function (name, ind, list) {
   fs.readFile(__dirname + '/tmd-templates/'+name+'.jade', 'utf8', function(err, str){
     if (err) throw 'tmd-templates/'+name+'.jade could not be found';
     try {
@@ -70,10 +70,14 @@ connect(
   , connect.router(router)
 ).listen(3456);
 
-function handleFilesInDirectory(expr, dir, callback) {
-  if (arguments.length < 2) throw 'at least give me expr and a callback';
+//dir - default to '.'
+//cond - boolean function return wether file should be handle
+//callback - how this file should be handle
+function fsfind(dir, cond, callback) {
+  if (arguments.length < 2) throw 'at least give me a cond and a callback';
   if (typeof dir == 'function') {
-    callback = dir;
+    callback = cond;
+    cond = dir;
     dir = '.';
   }
   fs.readdir(dir, function (err, files) {
@@ -83,12 +87,14 @@ function handleFilesInDirectory(expr, dir, callback) {
       .forEach(function (file) {
         fs.stat(file, function (err, stat) {
           if (err) return callback(err);
-          if (stat.isDirectory()) handleFilesInDirectory(expr, file, callback);
-          else if (stat.isFile() && file.substring(file.lastIndexOf('/')+1).match(expr))
-            callback(null, file);
+          if (stat.isDirectory()) fsfind(file, cond, callback);
+          else if (stat.isFile() && cond(file)) callback(null, file);
         });
       });
   });
+}
+function condMdFile(file) {
+  return file.substring(file.lastIndexOf('/')+1).match(/.md$/);
 }
 
 function mkdir_p(dirname) {
@@ -107,7 +113,7 @@ function mkdir_p(dirname) {
     fs.mkdirSync(t, '755');
   }
 }
-handleFilesInDirectory(/.md$/, sourceDirectory, function (err, file) {
+fsfind(sourceDirectory, condMdFile, function (err, file) {
   var outputFile = __dirname + '/tmd-output' + file.substring(sourceDirectory.length, file.length - 3) + '.html';
   mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
   renderJade(file, function (err, html) {
@@ -116,3 +122,11 @@ handleFilesInDirectory(/.md$/, sourceDirectory, function (err, file) {
     });
   });
 });
+setTimeout(function () {
+console.log(tp.listing({
+    docs: [{
+        href: '/'
+      , title: 'Hello'
+    }]
+}));
+}, 500);

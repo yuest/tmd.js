@@ -1,0 +1,9 @@
+!!! 5
+html
+  head
+    title hello
+  body
+    div#list
+      ul
+        - each doc in docs
+          li: a(href=doc.href)= doc.title
