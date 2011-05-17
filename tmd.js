@@ -20,11 +20,12 @@ var fs = require('fs')
     }
   });
 });
+console.log(tp.listing);
 
-function renderJade(mdfilepath, fn) {
+function renderJade(tpind, mdfilepath, fn) {
   fs.readFile(mdfilepath, 'utf8', function (err, mdstr) {
     if (err) return fn('not found');
-    fn(null, tp.document({content: markdown.makeHtml(mdstr)}));
+    fn(null, tp[tpind]({content: markdown.makeHtml(mdstr)}));
   });
 }
 
@@ -34,18 +35,33 @@ var router = function (app) {
     next();
   });
   app.get('/*', function (req, res, next) {
-    var filepath = req.params[0];
+    var filepath = req.params[0]
+      , mdfilepath
+      ;
     if ('.html' == Array.prototype.splice.call(filepath, -5).join('')) {
       filepath = filepath.substring(0, filepath.length - 5);
     }
     if ('.md' != Array.prototype.splice.call(filepath, -3).join('')) {
-      filepath = filepath + '.md';
+      mdfilepath = filepath + '.md';
     }
-    filepath = sourceDirectory + '/' + filepath;
-    renderJade(filepath, function (err, html) {
-      if (err) res.notFound(err);
+    mdfilepath = sourceDirectory + '/' + filepath;
+    renderJade('document', mdfilepath, function (err, html) {
+      if (err) return next();
       res.ok().html(html);
     });
+  });
+  app.get('/*', function (req, res, next) {
+    var filepath = req.params[0];
+    if ('.html' != Array.prototype.splice.call(filepath, -5).join('')) {
+      filepath = filepath + '.html';
+    }
+    connectStatic.send(req, res, next, {
+        root: __dirname + '/tmd-output'
+      , path: '/' + filepath
+    });
+  });
+  app.get('/*', function (req, res, next) {
+    res.notFound('not found');
   });
 };
 
@@ -112,19 +128,38 @@ function mkdir_p(dirname) {
   }
 }
 fsfind(sourceDirectory, /.md$/, function (err, file) {
-  var outputFile = __dirname + '/tmd-output' + file.substring(sourceDirectory.length, file.length - 3) + '.html';
+  var outputFile = __dirname + '/tmd-output' +
+        file.substring(sourceDirectory.length, file.length - 3) + '.html'
+    , fileDir = file.substring(0, file.lastIndexOf('/'))
+    , _dirs = []
+    , _mds = []
+    , _files = []
+    ;
+  if (!path.exists(fileDir + '/tmd-listing.html')) {
+    fs.readdir(fileDir, function (err, files) {
+      var html, listfilename, childhtmlname;
+      if (err) return console.log('error generating '+fileDir+'/tmd-listing.html');
+      files.forEach(function (child) {
+        if (fs.statSync(fileDir+'/'+child).isDirectory()) _dirs.push({href:child, title:child});
+        else if (fs.statSync(fileDir+'/'+child).isFile() && child.match(/.md$/)) {
+          childhtmlname = child.substring(0, child.lastIndexOf('.'))+'.html';
+          _mds.push({href:childhtmlname, title:childhtmlname});
+        }
+        else if (fs.statSync(fileDir+'/'+child).isFile()) _files.push({href:child, title:child});
+      });
+      html = tp.listing({docs:_mds, dirs:_dirs, files: _files});
+      console.log(html);
+      listfilename = outputFile.substring(0, outputFile.lastIndexOf('/'))+'/tmd-listing.html';
+      console.log(listfilename);
+      fs.writeFile(listfilename, html, function (err) {
+        if (err) console.log(err);
+      });
+    });
+  }
   mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
-  renderJade(file, function (err, html) {
+  renderJade('document', file, function (err, html) {
     fs.writeFile(outputFile, html, function (err) {
       if (err) console.log(err);
     });
   });
 });
-setTimeout(function () {
-console.log(tp.listing({
-    docs: [{
-        href: '/'
-      , title: 'Hello'
-    }]
-}));
-}, 500);
