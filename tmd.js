@@ -83,11 +83,12 @@ var staticMiddleware = function (dir, as) {
   return function (req, res, next) {
     var ind = req.url.indexOf(as)
       , options = !ind ? {
-            root: __dirname + dir
+            root: dir
           , path: req.url.substring(as.length)
         } : null
       ;
     if (!options) return next();
+    console.log(options);
     connectStatic.send(req, res, next, options);
   };
 };
