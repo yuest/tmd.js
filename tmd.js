@@ -8,21 +8,21 @@ var fs = require('fs')
   , quip = require('quip')
   , jade = require('jade')
   , tp = {}
-  , sourceDirectory = __dirname + '/tmd-source'
+  , config = require('./config')
   , builded
   ;
+  console.log(config);
 
 ['document', 'listing'].forEach(function (name, ind, list) {
-  fs.readFile(__dirname + '/tmd-templates/'+name+'.jade', 'utf8', function(err, str){
-    if (err) throw 'tmd-templates/'+name+'.jade could not be found';
+  fs.readFile(config.dir.template + name + '.jade', 'utf8', function(err, str){
+    if (err) throw config.dir.template + name+'.jade could not be found';
     try {
       tp[name] = jade.compile(str);
     } catch (err) {
-      throw 'error on compile tmd-templates/'+name+'.jade';
+      throw 'error on compile '+config.dir.template + name + '.jade';
     }
   });
 });
-console.log(tp.listing);
 
 function renderJade(tpind, mdfilepath, fn) {
   fs.readFile(mdfilepath, 'utf8', function (err, mdstr) {
@@ -40,13 +40,13 @@ var router = function (app) {
     var filepath = req.params[0]
       , mdfilepath
       ;
-    if ('.html' == Array.prototype.splice.call(filepath, -5).join('')) {
+    if ('.html' == path.extname(filepath)) {
       filepath = filepath.substring(0, filepath.length - 5);
     }
     if ('.md' != Array.prototype.splice.call(filepath, -3).join('')) {
       mdfilepath = filepath + '.md';
     }
-    mdfilepath = sourceDirectory + '/' + filepath;
+    mdfilepath = config.dir.source + '/' + filepath;
     renderJade('document', mdfilepath, function (err, html) {
       if (err) return next();
       res.ok().html(html);
@@ -88,9 +88,9 @@ connect(
   , connect.router(router)
 ).listen(3456);
 
-utils.fsfind(sourceDirectory, /.md$/, function (err, file) {
-  var outputFile = __dirname + '/tmd-output' +
-        file.substring(sourceDirectory.length, file.length - 3) + '.html'
+utils.fsfind(config.dir.source, /.md$/, function (err, file) {
+  var outputFile = config.dir.output +
+        file.substring(config.dir.source.length, file.length - 3) + '.html'
     , fileDir = file.substring(0, file.lastIndexOf('/'))
     , _dirs = []
     , _mds = []
