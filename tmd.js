@@ -56,7 +56,7 @@ var router = function (app) {
     if ('.md' != Array.prototype.splice.call(filepath, -3).join('')) {
       mdfilepath = filepath + '.md';
     }
-    mdfilepath = config.dir.source + '/' + filepath;
+    mdfilepath = config.dir.source + '/' + mdfilepath;
     renderJade('document', mdfilepath, function (err, html) {
       if (err) return next();
       res.ok().html(html);
