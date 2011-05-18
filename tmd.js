@@ -1,4 +1,4 @@
-require.paths.unshift('./node_modules/markdown/lib');
+require.paths.unshift(__dirname + '/node_modules/markdown/lib');
 var fs = require('fs')
   , utils = require('./utils.js')
   , path = require('path')
