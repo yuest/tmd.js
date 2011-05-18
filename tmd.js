@@ -94,7 +94,7 @@ var staticMiddleware = function (dir, as) {
 
 connect(
     quip()
-  , staticMiddleware('/tmd-static', '/tmd-static')
+  , staticMiddleware(config.dir.staticFrom, config.dir.staticTo)
   , connect.router(router)
 ).listen(3456);
 
