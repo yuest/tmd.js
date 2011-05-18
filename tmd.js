@@ -8,10 +8,20 @@ var fs = require('fs')
   , quip = require('quip')
   , jade = require('jade')
   , tp = {}
-  , config = require('./config')
+  , configDirPath = path.resolve('.')
+  , configDirLastTry
+  , config
   , builded
   ;
-  console.log(config);
+while (configDirLastTry != configDirPath) {
+  try {
+    config = require(configDirPath + '/config');
+  } catch (e) {}
+  if (config) break;
+  configDirLastTry = configDirPath;
+  configDirPath = path.dirname(configDirPath);
+}
+if (!config) throw 'config.js not found';
 
 ['document', 'listing'].forEach(function (name, ind, list) {
   fs.readFile(config.dir.template + name + '.jade', 'utf8', function(err, str){
@@ -109,9 +119,7 @@ utils.fsfind(config.dir.source, /.md$/, function (err, file) {
         else if (fs.statSync(fileDir+'/'+child).isFile()) _files.push({href:child, title:child});
       });
       html = tp.listing({docs:_mds, dirs:_dirs, files: _files});
-      console.log(html);
       listfilename = outputFile.substring(0, outputFile.lastIndexOf('/'))+'/tmd-listing.html';
-      console.log(listfilename);
       fs.writeFile(listfilename, html, function (err) {
         if (err) console.log(err);
       });
