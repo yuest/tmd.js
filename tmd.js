@@ -1,5 +1,6 @@
 require.paths.unshift('./node_modules/markdown/lib');
 var fs = require('fs')
+  , utils = require('./utils.js')
   , path = require('path')
   , markdown = require('markdown')
   , connect = require('connect')
@@ -8,6 +9,7 @@ var fs = require('fs')
   , jade = require('jade')
   , tp = {}
   , sourceDirectory = __dirname + '/tmd-source'
+  , builded
   ;
 
 ['document', 'listing'].forEach(function (name, ind, list) {
@@ -86,48 +88,7 @@ connect(
   , connect.router(router)
 ).listen(3456);
 
-//dir - default to '.'
-//expr - RegExp
-//callback - how this file should be handle
-function fsfind(dir, expr, callback) {
-  if (arguments.length < 2) throw 'at least give me a cond and a callback';
-  if (arguments.length == 2) {
-    callback = cond;
-    cond = dir;
-    dir = '.';
-  }
-  fs.readdir(dir, function (err, files) {
-    if (err) return callback(err);
-    files
-      .map(function (file) { return dir + '/' + file; })
-      .forEach(function (file) {
-        fs.stat(file, function (err, stat) {
-          if (err) return callback(err);
-          if (stat.isDirectory()) fsfind(file, expr, callback);
-          else if (stat.isFile() && file.substring(file.lastIndexOf('/')+1).match(expr))
-            callback(null, file);
-        });
-      });
-  });
-}
-
-function mkdir_p(dirname) {
-  if (dirname[0] != '/') throw 'dir name needs to start with "/"';
-  dirnames = dirname.split('/');
-  dirnames.shift();
-  if (dirnames[dirnames.length] === '') dirnames.pop();
-  if (dirnames.length == 0) throw 'invalid dirname';
-  var t = '', i, l;
-  for (i = 0, l = dirnames.length; i < l; ++i) {
-    t = t + '/' + dirnames[i];
-    if (path.existsSync(t)) {
-      if (fs.statSync(t).isDirectory()) continue;
-      else throw "'" + t + "' exists but it's not a directory";
-    }
-    fs.mkdirSync(t, '755');
-  }
-}
-fsfind(sourceDirectory, /.md$/, function (err, file) {
+utils.fsfind(sourceDirectory, /.md$/, function (err, file) {
   var outputFile = __dirname + '/tmd-output' +
         file.substring(sourceDirectory.length, file.length - 3) + '.html'
     , fileDir = file.substring(0, file.lastIndexOf('/'))
@@ -156,7 +117,7 @@ fsfind(sourceDirectory, /.md$/, function (err, file) {
       });
     });
   }
-  mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
+  utils.mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
   renderJade('document', file, function (err, html) {
     fs.writeFile(outputFile, html, function (err) {
       if (err) console.log(err);
