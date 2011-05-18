@@ -68,7 +68,7 @@ var router = function (app) {
       filepath = filepath + '.html';
     }
     connectStatic.send(req, res, next, {
-        root: __dirname + '/tmd-output'
+        root: config.dir.output
       , path: '/' + filepath
     });
   });
