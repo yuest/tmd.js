@@ -13,6 +13,7 @@ var fs = require('fs')
   , config
   , builded
   ;
+
 while (configDirLastTry != configDirPath) {
   try {
     config = require(configDirPath + '/config');
@@ -24,14 +25,11 @@ while (configDirLastTry != configDirPath) {
 if (!config) throw 'config.js not found';
 
 ['document', 'listing'].forEach(function (name, ind, list) {
-  fs.readFile(config.dir.template + name + '.jade', 'utf8', function(err, str){
-    if (err) throw config.dir.template + name+'.jade could not be found';
-    try {
-      tp[name] = jade.compile(str);
-    } catch (err) {
-      throw 'error on compile '+config.dir.template + name + '.jade';
-    }
-  });
+  try {
+    tp[name] = jade.compile(fs.readFileSync(config.dir.template + name + '.jade', 'utf8'));
+  } catch (err) {
+    throw 'error on compile '+config.dir.template + name + '.jade';
+  }
 });
 
 function renderJade(tpind, mdfilepath, fn) {
@@ -82,51 +80,63 @@ var router = function (app) {
 var staticMiddleware = function (dir, as) {
   return function (req, res, next) {
     var ind = req.url.indexOf(as)
-      , options = !ind ? {
-            root: dir
-          , path: req.url.substring(as.length)
-        } : null
-      ;
+        , options = !ind
+                    ? {
+                        root: dir
+                      , path: req.url.substring(as.length)
+                    }
+                    : false
+        ;
     if (!options) return next();
-    console.log(options);
     connectStatic.send(req, res, next, options);
   };
 };
 
-connect(
-    quip()
-  , staticMiddleware(config.dir.staticFrom, config.dir.staticTo)
-  , connect.router(router)
-).listen(3456);
+if (process.argv[2] in {'-d':1, '--dev':1}) {
+  connect(
+      quip()
+    , connect.router(router)
+    , staticMiddleware(config.dir.staticFrom, config.dir.staticTo)
+  ).listen(3456);
+  console.log('development server started on 127.0.0.1:3456');
+}
 
 utils.fsfind(config.dir.source, /.md$/, function (err, file) {
-  var outputFile = config.dir.output +
-        file.substring(config.dir.source.length, file.length - 3) + '.html'
-    , fileDir = file.substring(0, file.lastIndexOf('/'))
+  var outputFile = path.join(config.dir.output, 
+          file.substring(config.dir.source.length, file.length - 3) + '.html')
+    , outputFileDir = path.dirname(outputFile)
     , _dirs = []
     , _mds = []
     , _files = []
     ;
-  if (!path.exists(fileDir + '/tmd-listing.html')) {
-    fs.readdir(fileDir, function (err, files) {
-      var html, listfilename, childhtmlname;
-      if (err) return console.log('error generating '+fileDir+'/tmd-listing.html');
+  if (!path.existsSync(outputFileDir + '/tmd-listing.html')) {
+    fs.readdir(outputFileDir, function (err, files) {
+      var html, childhtmlname;
+      if (err) return console.log('error generating '+outputFileDir+'/tmd-listing.html');
       files.forEach(function (child) {
-        if (fs.statSync(fileDir+'/'+child).isDirectory()) _dirs.push({href:child, title:child});
-        else if (fs.statSync(fileDir+'/'+child).isFile() && child.match(/.md$/)) {
+        if (fs.statSync(outputFileDir+'/'+child).isDirectory()) {
+          _dirs.push({href:child, title:child});
+        }
+        else if (fs.statSync(outputFileDir+'/'+child).isFile() && child.match(/.md$/)) {
           childhtmlname = child.substring(0, child.lastIndexOf('.'))+'.html';
           _mds.push({href:childhtmlname, title:childhtmlname});
         }
-        else if (fs.statSync(fileDir+'/'+child).isFile()) _files.push({href:child, title:child});
+        else if (fs.statSync(outputFileDir+'/'+child).isFile()) {
+          _files.push({href:child, title:child});
+        }
       });
       html = tp.listing({docs:_mds, dirs:_dirs, files: _files});
-      listfilename = outputFile.substring(0, outputFile.lastIndexOf('/'))+'/tmd-listing.html';
-      fs.writeFile(listfilename, html, function (err) {
+      fs.writeFile(path.dirname(outputFile)+'/tmd-listing.html', html, function (err) {
         if (err) console.log(err);
       });
+      if (!path.existsSync(path.dirname(file) + '/index.md')) {
+        fs.writeFile(path.dirname(outputFile)+'/index.html', html, function (err) {
+          if (err) console.log(err);
+        });
+      }
     });
   }
-  utils.mkdir_p(outputFile.substring(0, outputFile.lastIndexOf('/')));
+  utils.mkdir_p(outputFileDir);
   renderJade('document', file, function (err, html) {
     fs.writeFile(outputFile, html, function (err) {
       if (err) console.log(err);
