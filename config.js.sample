@@ -2,7 +2,9 @@ module.exports = {
     dir: {//dirs ending with '/', __dirname is the full path of config.js and '.' is the relative path to `pwd` of command line.
         source: __dirname + "/tmd-source/"
       , template: __dirname + "/tmd-templates/"
-      , output: __dirname + "/tmd-output/"
+      , output: __dirname + "/"
+      , staticFrom: __dirname + "/tmd-static/"
+      , staticTo: __dirname + "/tmd-static/"
     }
   , locals: {//default variables in templates
     }
