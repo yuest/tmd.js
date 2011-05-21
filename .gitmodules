@@ -7,12 +7,15 @@
 [submodule "node_modules/connect"]
 	path = node_modules/connect
 	url = git://github.com/senchalabs/connect.git
-[submodule "node_modules/quip"]
-	path = node_modules/quip
-	url = git://github.com/caolan/quip.git
 [submodule "node_modules/jade"]
 	path = node_modules/jade
 	url = git://github.com/visionmedia/jade.git
 [submodule "node_modules/markdown"]
 	path = node_modules/markdown
 	url = git://github.com/gmosx/markdown.git
+[submodule "node_modules/dispatch"]
+	path = node_modules/dispatch
+	url = git://github.com/caolan/dispatch.git
+[submodule "node_modules/quip"]
+	path = node_modules/quip
+	url = git://github.com/yuest/quip.git
