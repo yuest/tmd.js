@@ -23,12 +23,17 @@ while (configDirLastTry != configDirPath) {
   configDirPath = path.dirname(configDirPath);
 }
 if (!config) throw 'config.js not found';
+var srcDir = config.dir.source
+  , tplDir = config.dir.template
+  , outDir = config.dir.output
+  ;
 
 ['document', 'listing'].forEach(function (name, ind, list) {
   try {
-    tp[name] = jade.compile(fs.readFileSync(config.dir.template + name + '.jade', 'utf8'));
+    tp[name] = jade.compile(fs.readFileSync(
+        path.join(config.dir.template, name + '.jade'), 'utf8'));
   } catch (err) {
-    throw 'error on compile '+config.dir.template + name + '.jade';
+    throw 'error on compile ' + path.join(config.dir.template, name + '.jade');
   }
 });
 
@@ -40,26 +45,23 @@ function renderJade(tpind, mdfilepath, fn) {
 }
 
 var router = function (app) {
-  app.get('*?/', function (req, res, next) {
-    req.url += 'index';
-    next();
-  });
+    /*
   app.get('/*', function (req, res, next) {
-    var filepath = req.params[0]
-      , mdfilepath
-      ;
-    if ('.html' == path.extname(filepath)) {
-      filepath = filepath.substring(0, filepath.length - 5);
-    }
-    if ('.md' != Array.prototype.splice.call(filepath, -3).join('')) {
-      mdfilepath = filepath + '.md';
-    }
-    mdfilepath = config.dir.source + '/' + mdfilepath;
-    renderJade('document', mdfilepath, function (err, html) {
-      if (err) return next();
+      if ( req.url[req.url.length - 1] == '/') return next();
+      if (!path.exists(path.join(config.dir.source, req.params[0] + '.md'))) {
+          res.redirect(req.url + '/');
+      }
+  });
+  */
+  app.get('/*', function (req, res, next) {
+    console.log(req.url);
+    var mdFilePath = path.join( srcDir, req.params[0] + '.md');
+    renderJade('document', mdFilePath, function (err, html) {
+      if (err) return res.notFound('notFound');
       res.ok().html(html);
     });
   });
+  /*
   app.get('/*', function (req, res, next) {
     var filepath = req.params[0];
     if ('.html' != Array.prototype.splice.call(filepath, -5).join('')) {
@@ -70,6 +72,7 @@ var router = function (app) {
       , path: '/' + filepath
     });
   });
+  */
   app.get('/*', function (req, res, next) {
     res.notFound('not found');
   });
@@ -78,6 +81,7 @@ var router = function (app) {
 //dir - leading with '/' and not tailing with '/', for example '/static'
 //as - what directory you want your file to be served as, for example if it was set to '/public', request of '/public/file' will get './static/file' as a result. set to '', request of '/file' will get './static/file'
 var staticMiddleware = function (dir, as) {
+  if ( as[as.length - 1] == '/') as = as.substring(0, as.length - 1);
   return function (req, res, next) {
     var ind = req.url.indexOf(as)
         , options = !ind
@@ -92,16 +96,37 @@ var staticMiddleware = function (dir, as) {
   };
 };
 
+function updateUrl(req, res, next) {
+    var tryDirectory = true
+      , filePath = path.join( srcDir, req.url );
+    if ( req.url[ req.url.length - 1 ] == '/') {
+        req.url = req.url + 'index';
+    } else {
+        req.url = req.url.replace( /.html$/, function () {
+            tryDirectory = false;
+            return '';
+        });
+        if ( !path.exists( filePath + '.md')
+                && tryDirectory
+                && path.exists( filePath ) && fs.statSync( filePath ).isDirectory()) {
+            req.redirect( req.url + '/');
+        }
+    }
+    next();
+}
+
 if (process.argv[2] in {'-d':1, '--dev':1}) {
   connect(
       quip()
-    , connect.router(router)
     , staticMiddleware(config.dir.staticFrom, config.dir.staticTo)
+    , updateUrl
+    , connect.router(router)
   ).listen(3456);
   console.log('development server started on 127.0.0.1:3456');
 }
 
 utils.fsfind(config.dir.source, /.md$/, function (err, file) {
+  if (err) throw err;
   var outputFile = path.join(config.dir.output, 
           file.substring(config.dir.source.length, file.length - 3) + '.html')
     , outputFileDir = path.dirname(outputFile)

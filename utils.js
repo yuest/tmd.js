@@ -5,22 +5,23 @@ var fs = require('fs')
 //expr - RegExp
 //callback - how this file should be handle
 exports.fsfind = function fsfind(dir, expr, callback) {
-  if (arguments.length < 2) throw 'at least give me a cond and a callback';
+  if (arguments.length < 2) throw 'at least give me a expr and a callback';
   if (arguments.length == 2) {
-    callback = cond;
-    cond = dir;
+    callback = expr;
+    expr = dir;
     dir = '.';
   }
   fs.readdir(dir, function (err, files) {
     if (err) return callback(err);
     files
-      .map(function (file) { return dir + '/' + file; })
+      .map(function (file) { return path.join(dir, file); })
       .forEach(function (file) {
         fs.stat(file, function (err, stat) {
           if (err) return callback(err);
           if (stat.isDirectory()) fsfind(file, expr, callback);
-          else if (stat.isFile() && file.substring(file.lastIndexOf('/')+1).match(expr))
+          else if (stat.isFile() && path.basename(file).match(expr)) {
             callback(null, file);
+          }
         });
       });
   });
